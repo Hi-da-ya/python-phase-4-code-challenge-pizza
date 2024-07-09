@@ -54,7 +54,7 @@ class Pizzas(Resource):
         return make_response(jsonify(pizzas), 200)
 
 class RestaurantPizzas(Resource):
-    def post(self):
+   def post(self):
         try:
             data = request.get_json()
 
@@ -63,25 +63,22 @@ class RestaurantPizzas(Resource):
             restaurant_id = data.get('restaurant_id')
 
             if not (price and pizza_id and restaurant_id):
-                return jsonify({"errors": ["Missing input fields"]}), 400
+                return make_response(jsonify({"errors": ["validation errors"]}), 400)
             
-            pizza = Pizza.query.get(pizza_id)
-            restaurant = Restaurant.query.get(restaurant_id)
+            pizza = Pizza.query.filter_by(id=pizza_id).first()
+            restaurant = Restaurant.query.filter_by(id=restaurant_id).first()
             
             if not (pizza and restaurant):
-                return jsonify({"errors": ["Pizza or restaurant does not exist"]}), 400
-
+                return make_response(jsonify({"errors": "validation errors"}), 400)
 
             if not (isinstance(price, (int, float)) and 1 <= price <= 30):
-                return jsonify({"errors": ["Price must be between one and zero"]}), 400
-            
+                return make_response(jsonify({"errors":["validation errors"]}), 400)
 
-            
             new_restaurant_pizza_item = RestaurantPizza(
-            price=price,
-            pizza_id=pizza_id,
-            restaurant_id=restaurant_id,
-        )   
+                price=price,
+                pizza_id=pizza_id,
+                restaurant_id=restaurant_id,
+            )
 
             db.session.add(new_restaurant_pizza_item)
             db.session.commit()
@@ -103,12 +100,10 @@ class RestaurantPizzas(Resource):
                 "restaurant_id": restaurant.id
             }
 
-            
             return make_response(jsonify(response_data), 201)
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({"error": str(e)}), 500      
 
+        except Exception as e:
+            return make_response(jsonify({"errors": [str(e)]}), 400)
 api.add_resource(Restaurants, "/restaurants")        
 api.add_resource(ReastaurantById, "/restaurants/<int:id>")
 api.add_resource(Pizzas, "/pizzas") 
@@ -117,6 +112,10 @@ api.add_resource(RestaurantPizzas, "/restaurant_pizzas")
 @app.errorhandler(404)
 def not_found_error(error):
     return make_response(jsonify({"error": "Not Found"}), 404)
+
+@app.errorhandler(400)
+def bad_request_error(error):
+    return jsonify({'error': 'Bad Request'}), 400
 
 
 if __name__ == "__main__":
